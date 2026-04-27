@@ -42,16 +42,16 @@ import (
 
 // Server is the local HTTP+SOCKS5 listener.
 type Server struct {
-	Addr            string        // e.g. "127.0.0.1:8085"
-	SOCKS5Addr      string        // e.g. "127.0.0.1:1080" or "" to disable
-	Auth            *auth.Gate    // nil = open (only safe on loopback)
-	Mint            *mitm.Mint    // for CONNECT MITM
-	Relay           *relay.Client // for outbound requests
-	BlockHosts      []string      // exact + ".suffix" entries
-	BypassHosts     []string      // direct (no-MITM, no-relay) — TODO
-	MaxConnsPerSrc  int           // 0 → 64
-	IdleTimeout     time.Duration // 0 → 60s
-	Logger          *slog.Logger
+	Addr           string        // e.g. "127.0.0.1:8085"
+	SOCKS5Addr     string        // e.g. "127.0.0.1:1080" or "" to disable
+	Auth           *auth.Gate    // nil = open (only safe on loopback)
+	Mint           *mitm.Mint    // for CONNECT MITM
+	Relay          *relay.Client // for outbound requests
+	BlockHosts     []string      // exact + ".suffix" entries
+	BypassHosts    []string      // direct (no-MITM, no-relay) — TODO
+	MaxConnsPerSrc int           // 0 → 64
+	IdleTimeout    time.Duration // 0 → 60s
+	Logger         *slog.Logger
 
 	conns    sync.Map // src IP → *int32 inflight count
 	listener net.Listener
@@ -318,6 +318,12 @@ func (s *Server) relayPlain(c net.Conn, req *http.Request) error {
 
 // pickHeaders strips hop-by-hop headers (RFC 9110 §7.6.1) and
 // proxy-credential headers before forwarding.
+//
+// `accept-encoding` is also stripped: Apps Script's UrlFetchApp
+// transparently decompresses gzip/deflate but cannot decode brotli
+// or zstd, so forwarding the browser's full encoding preference
+// produces a header/body mismatch on the response (see Code.gs
+// SKIP_RES_HEADERS for the matching cleanup on the relay side).
 func pickHeaders(h http.Header) map[string]string {
 	skip := map[string]struct{}{
 		"connection":          {},
@@ -329,6 +335,7 @@ func pickHeaders(h http.Header) map[string]string {
 		"upgrade":             {},
 		"proxy-authorization": {},
 		"proxy-authenticate":  {},
+		"accept-encoding":     {},
 		// Apps Script will set these:
 		"host":           {},
 		"content-length": {},
@@ -379,21 +386,21 @@ func shouldKeepAlive(req *http.Request) bool {
 func writeRelayResponse(w io.Writer, r *relay.Response) error {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "HTTP/1.1 %d %s\r\n", r.Status, http.StatusText(r.Status))
-	dropHopByHop := func(name string) bool {
+	// Drop hop-by-hop AND framing headers. The relay's auto-decompression
+	// invalidates Content-Encoding and the original Content-Length —
+	// recompute Content-Length from the actual body bytes below.
+	dropHeader := func(name string) bool {
 		switch strings.ToLower(name) {
 		case "connection", "proxy-connection", "keep-alive",
-			"transfer-encoding", "te", "trailer", "upgrade":
+			"transfer-encoding", "te", "trailer", "upgrade",
+			"content-encoding", "content-length":
 			return true
 		}
 		return false
 	}
-	hadCL := false
 	for k, v := range r.Headers {
-		if dropHopByHop(k) {
+		if dropHeader(k) {
 			continue
-		}
-		if strings.EqualFold(k, "content-length") {
-			hadCL = true
 		}
 		switch vv := v.(type) {
 		case string:
@@ -406,9 +413,7 @@ func writeRelayResponse(w io.Writer, r *relay.Response) error {
 			}
 		}
 	}
-	if !hadCL {
-		fmt.Fprintf(&sb, "Content-Length: %d\r\n", len(r.Body))
-	}
+	fmt.Fprintf(&sb, "Content-Length: %d\r\n", len(r.Body))
 	sb.WriteString("\r\n")
 
 	if _, err := io.WriteString(w, sb.String()); err != nil {
