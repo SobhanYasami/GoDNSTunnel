@@ -1,0 +1,16 @@
+# Built binaries
+/relayvpn
+/relayvpn.exe
+/dist/
+
+# Local CA (NEVER commit — contains the private key that signs all your MITM leaves)
+/ca/
+
+# Local config (contains the relay shared secret + proxy credentials)
+/config.json
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp

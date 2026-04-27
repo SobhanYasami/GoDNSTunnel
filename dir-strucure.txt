@@ -1,0 +1,7 @@
+cmd/relayvpn/main.go              entry: load config → CA → Mint → Relay → Server
+internal/config/                  strict json.Decoder, fail-fast validation
+internal/auth/                    Proxy-Auth Basic + RFC 1929, constant-time compare
+internal/mitm/{ca,mint}.go        ECDSA P-256 root + leaf cache, wildcard collapse
+internal/relay/{envelope,client,nonce}.go   HMAC envelope + h2 fronted client + replay cache
+internal/proxy/{server,socks5}.go HTTP CONNECT + SOCKS5 listeners with MITM dispatch
+apps_script/Code.gs               hardened verifier (HMAC + skew + replay cache + SSRF guard)
