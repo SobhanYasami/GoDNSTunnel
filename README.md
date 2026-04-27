@@ -90,8 +90,8 @@ Three things to keep in mind:
 Clone the repository and build:
 
 ```bash
-git clone https://github.com/SobhanYasami/GoMasterHttpRelayVPN.git
-cd GoMasterHttpRelayVPN
+git clone https://github.com/SobhanYasami/GoDNSTunnel.git
+cd GoDNSTunnel
 make build
 ```
 
