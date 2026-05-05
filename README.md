@@ -77,7 +77,13 @@ Three things to keep in mind:
 
 - A computer running Linux, macOS, or Windows.
 - **Go 1.22 or newer** installed. Check with `go version`. Get it from
-  <https://go.dev/dl/>.
+  <https://go.dev/dl/> or <https://soft98.ir/software/programming/707-golang.html>.
+- Make Sure if go installed:
+```bash
+go version
+# Expected output: go version go1.22.x linux/amd64 (or similar)
+# If not found, install Go from the links above.
+```
 - A free Google account.
 - A modern browser (Firefox or any Chromium-based browser).
 
