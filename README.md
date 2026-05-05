@@ -84,6 +84,7 @@ go version
 # Expected output: go version go1.22.x linux/amd64 (or similar)
 # If not found, install Go from the links above.
 ```
+- make Sure if git installed. Get it from <https://soft98.ir/software/programming/699-git-windows.html>
 - A free Google account.
 - A modern browser (Firefox or any Chromium-based browser).
 
